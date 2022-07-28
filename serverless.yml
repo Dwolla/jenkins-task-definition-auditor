@@ -1,0 +1,50 @@
+service: jenkins-task-definition-auditor
+useDotenv: true
+variablesResolutionMode: 20210326
+
+provider:
+  name: aws
+  runtime: java11
+  memorySize: 1024
+  timeout: 60
+  region: us-west-2
+  deploymentBucket:
+    name: ${env:BUCKET}
+    serverSideEncryption: "AES256"
+  logRetentionInDays: 7
+  iam:
+    deploymentRole: "arn:aws:iam::${env:ACCOUNT}:role/cloudformation/deployer/cloudformation-deployer"
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - cloudformation:ListStackResources
+            - ecs:DescribeTaskDefinition
+          Resource:
+            - "*"
+  stackTags:
+    Creator: serverless
+    Environment: ${opt:stage}
+    Project: ${self:service}
+    Team: platform
+    Visibility: internal
+  lambdaHashingVersion: 20201221
+
+functions:
+  JenkinsTaskDefinitionAuditor:
+    handler: com.dwolla.jenkins.auditor.Handler
+    package:
+      artifact: ${env:ARTIFACT_PATH}
+
+package:
+  individually: true
+
+resources:
+  Description: "CloudFormation custom resource to audit the task definitions created for Jenkins, to make sure they're compatible with the ECS Cloud plugin"
+  Outputs:
+    Function:
+      Description: JenkinsTaskDefinitionAuditor Lambda Function Service Token
+      Value:
+        'Fn::GetAtt': [JenkinsTaskDefinitionAuditorFunction, Arn]
+      Export:
+        Name: ${self:service}:${opt:stage}:JenkinsTaskDefinitionAuditorArn

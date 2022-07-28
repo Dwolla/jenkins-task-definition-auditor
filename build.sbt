@@ -65,7 +65,7 @@ deploy := Def.inputTask {
   val exitCode = Process(
     commandParts,
     Option((`jenkins-task-definition-auditor` / baseDirectory).value),
-    "DATABASE_ARTIFACT_PATH" -> (`jenkins-task-definition-auditor` / Universal / packageBin).value.toString,
+    "ARTIFACT_PATH" -> (`jenkins-task-definition-auditor` / Universal / packageBin).value.toString,
   ).!
 
   if (exitCode == 0) exitCode
