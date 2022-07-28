@@ -10,13 +10,13 @@ import software.amazon.awssdk.services.cloudformation.CloudFormationAsyncClient
 import software.amazon.awssdk.services.cloudformation.model.ListStackResourcesRequest
 
 trait CloudFormationAlg[F[_]] {
-  def resources(stack: StackId): Stream[F, TaskDefinitionArn]
+  def taskDefinitionsOfStack(stack: StackId): Stream[F, TaskDefinitionArn]
 }
 
 object CloudFormationAlg {
   implicit val CloudFormationAlgFunctorK: FunctorK[CloudFormationAlg] = new FunctorK[CloudFormationAlg] {
     override def mapK[F[_], G[_]](af: CloudFormationAlg[F])(fk: F ~> G): CloudFormationAlg[G] = new CloudFormationAlg[G] {
-      override def resources(stack: StackId): Stream[G, TaskDefinitionArn] = af.resources(stack).translate(fk)
+      override def taskDefinitionsOfStack(stack: StackId): Stream[G, TaskDefinitionArn] = af.taskDefinitionsOfStack(stack).translate(fk)
     }
   }
 
@@ -24,7 +24,7 @@ object CloudFormationAlg {
     Resource.fromAutoCloseable(Sync[F].delay(CloudFormationAsyncClient.builder().build()))
       .map { client =>
         new CloudFormationAlg[F] {
-          override def resources(stack: StackId): Stream[F, TaskDefinitionArn] =
+          override def taskDefinitionsOfStack(stack: StackId): Stream[F, TaskDefinitionArn] =
             AwsEval.unfold[F](client.listStackResourcesPaginator(ListStackResourcesRequest.builder().stackName(stack.value).build()))(_.stackResourceSummaries())
               .filter(_.resourceType() == "AWS::ECS::TaskDefinition")
               .map(_.physicalResourceId())
